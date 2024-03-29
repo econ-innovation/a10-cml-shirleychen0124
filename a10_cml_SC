@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# 输入文件路径
+input_file="/Users/shirleychen/learn_git/github/a10-cml-shirleychen0124/pubnr_cn.txt"
+
+# 文件总数
+total_files=$(wc -l < "$input_file")
+
+# 每个目录中的文件数
+files_per_dir=100
+# 每个上级目录中的目录数
+dirs_per_parent=100
+
+# 邮件接收者（不确定公共邮箱是哪一个，先用了个人邮箱）
+recipient="shirleycxn@163.com"
+
+# 邮件主题
+subject="专利号数据已处理完毕"
+
+# 读取文件中的每一行（每个专利号）
+i=0
+while IFS= read -r line; do
+  ((i++))
+  # 计算目录结构
+  parent_dir=$(( (i-1) / (files_per_dir*dirs_per_parent) ))
+  subdir=$(( (i-1) / files_per_dir % dirs_per_parent ))
+  file_name=$(printf "%03d" $(( (i-1) % files_per_dir )))
+
+  # 创建目录路径
+  dir_path="./output/$parent_dir/$subdir"
+  mkdir -p "$dir_path"
+
+  # 根据专利号创建文件
+  touch "$dir_path/$line.txt"
+
+  # 每处理完100个文件，发送一封邮件
+  if ((i % 100 == 0)) || ((i == total_files)); then
+    body="专利号数据处理进度：$i / $total_files"
+    echo -e "Subject: $subject\n\n$body" | msmtp --from=default -t "$recipient"
+  fi
+done < "$input_file"
+
+echo "专利号文件创建完成。"
+
